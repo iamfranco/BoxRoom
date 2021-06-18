@@ -15,3 +15,18 @@ a {text-decoration: none;}
     left: 0;
     outline: none;
 }
+
+.link {
+    position: fixed;
+    top: 0;
+    left: 0;
+    display: inline-block;
+    z-index: 10;
+    background-color: rgba(0,0,0,0.5);
+    color: #fff;
+    padding: 10px 15px;
+}
+
+.link:hover {
+    background-color: rgba(0,0,0,0.8);
+}

@@ -12,7 +12,7 @@
 <body>
 
     <canvas class="webgl"></canvas>
-
+    <a href="https://github.com/iamfranco/BoxRoom" class="link" target="_blank">View GitHub Code</a>
 </body>
 <script type="module">
 
@@ -62,6 +62,40 @@ gltfLoader.load(
     }
 )
 
+// add front side top view clickable box (plane)
+const ViewBoxHeight = 0.4;
+const ViewBoxGeometry = new THREE.PlaneGeometry(4/3,ViewBoxHeight)
+
+const sideViewBox = new THREE.Mesh(ViewBoxGeometry, new THREE.MeshBasicMaterial({ 
+    color: 0x000000, 
+    opacity: 0.1, 
+    transparent: true, 
+    side: THREE.DoubleSide
+}))
+sideViewBox.position.set(-0.21,-2-ViewBoxHeight/2+0.5,-2)
+scene.add( sideViewBox )
+
+const frontViewBox = new THREE.Mesh(ViewBoxGeometry, new THREE.MeshBasicMaterial({ 
+    color: 0x000000, 
+    opacity: 0.1, 
+    transparent: true, 
+    side: THREE.DoubleSide
+}))
+frontViewBox.position.set(2,-2-ViewBoxHeight/2+0.5,0)
+frontViewBox.rotation.y = Math.PI / 2
+scene.add( frontViewBox )
+
+const topViewBox = new THREE.Mesh(ViewBoxGeometry, new THREE.MeshBasicMaterial({ 
+    color: 0x000000, 
+    opacity: 0.1, 
+    transparent: true, 
+    side: THREE.DoubleSide
+}))
+topViewBox.position.set(-0.33,2+0.5,2+ViewBoxHeight/2)
+topViewBox.rotation.x = Math.PI / 2
+scene.add( topViewBox )
+
+
 // sizes
 const sizes = {
     width: window.innerWidth,
@@ -85,19 +119,17 @@ window.addEventListener('resize', () =>
 
 // Base camera
 const camera = new THREE.PerspectiveCamera(45, sizes.width / sizes.height, 0.1, 100)
-camera.position.x = 5
-camera.position.y = 5
-camera.position.z = -5
+var cameraDistance = 9 / Math.min(1, sizes.width / sizes.height)
+const cameraDistance_split = Math.sqrt(cameraDistance*cameraDistance / 3)
+camera.position.x = cameraDistance_split
+camera.position.y = cameraDistance_split
+camera.position.z = -cameraDistance_split
 scene.add(camera)
 
 // Controls
 const controls = new OrbitControls(camera, canvas)
 controls.enableDamping = true
 controls.enablePan = false
-controls.minAzimuthAngle = Math.PI/2 - 0.22
-controls.maxAzimuthAngle = Math.PI + 0.22
-controls.minPolarAngle = 0
-controls.maxPolarAngle = Math.PI/2 + 0.16
 
 // Renderer
 const renderer = new THREE.WebGLRenderer({
@@ -112,8 +144,27 @@ renderer.setClearColor('#9FD0DF') // background color
 // Animate
 const clock = new THREE.Clock()
 
+const raycaster = new THREE.Raycaster()
+const mouse = new THREE.Vector2()
+function onMouseMove( event ) {
+	mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1
+	mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1
+}
+
 const tick = () =>
 {
+    // reset view box opacity
+    frontViewBox.material.opacity = 0.1
+    sideViewBox.material.opacity = 0.1
+    topViewBox.material.opacity = 0.1
+
+    // detect if mouse is over view box
+	raycaster.setFromCamera( mouse, camera )
+    const intersects = raycaster.intersectObjects( scene.children )
+    for ( let i = 0; i < intersects.length; i ++ ) {
+        intersects[i].object.material.opacity = 0.5
+    }
+    
     const elapsedTime = clock.getElapsedTime()
     
     // Update controls
@@ -125,6 +176,40 @@ const tick = () =>
     // Call tick again on the next frame
     window.requestAnimationFrame(tick)
 }
+
+window.addEventListener( 'mousemove', onMouseMove, false )
+
+// sets camera to front side top views
+function getDist(x,y,z) {return Math.sqrt(x*x + y*y + z*z)}
+frontViewBox.callback = function() {
+    cameraDistance = getDist(camera.position.x, camera.position.y, camera.position.z)
+    camera.position.set( cameraDistance, 0, 0 );
+}
+sideViewBox.callback = function() {
+    cameraDistance = getDist(camera.position.x, camera.position.y, camera.position.z)
+    camera.position.set( 0, 0, -cameraDistance );
+}
+topViewBox.callback = function() {
+    cameraDistance = getDist(camera.position.x, camera.position.y, camera.position.z)
+    camera.position.set( 0, cameraDistance, 0 );
+}
+
+function onDocumentMouseDown( event ) {
+    mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1
+	mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1
+    raycaster.setFromCamera( mouse, camera )
+    var intersects = raycaster.intersectObjects( scene.children  ); 
+    if ( intersects.length > 0 ) {
+        intersects[0].object.callback();
+    }
+}
+function onDocumentTouchStart( event ) {  // for tablet mouse down conversion
+    event.clientX = event.touches[0].pageX;
+    event.clientY = event.touches[0].pageY;
+    onDocumentMouseDown( event );
+}
+window.addEventListener('click', onDocumentMouseDown, false )
+window.addEventListener('touchstart', onDocumentTouchStart, false) // for tablet
 
 tick()
 
